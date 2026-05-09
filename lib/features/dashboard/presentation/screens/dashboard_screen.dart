@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/widgets/eco_pond_widget.dart';
+import '../../../../shared/widgets/flash_quest_section.dart';
 import '../widgets/carbon_budget_card.dart';
 import '../widgets/recent_transactions.dart';
 
@@ -66,6 +68,19 @@ class DashboardScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
+
+          // ── 虛擬生態雙生池 ──
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: EcoPondWidget(),
+            ),
+          ),
+
+          // ── 閃電任務 ──
+          const SliverToBoxAdapter(
+            child: FlashQuestSection(),
           ),
 
           // ── 碳預算圓環圖 ──

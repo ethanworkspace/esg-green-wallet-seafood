@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../features/dashboard/data/providers/dashboard_providers.dart';
 import '../../data/providers/receipt_parse_provider.dart';
 
 class ScanScreen extends ConsumerStatefulWidget {
@@ -31,6 +32,233 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         _showResultBottomSheet(data);
       }
     });
+  }
+
+  Future<void> _onImportInvoice() async {
+    await ref.read(invoiceImportProvider.notifier).importInvoices();
+
+    if (!mounted) return;
+    final state = ref.read(invoiceImportProvider);
+
+    if (state.status == InvoiceImportStatus.success && state.lastReceipt != null) {
+      final receipt = state.lastReceipt!;
+      _showInvoiceResultSheet(receipt);
+    } else if (state.status == InvoiceImportStatus.error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ 匯入失敗：${state.errorMessage}'),
+          backgroundColor: AppTheme.dangerRed,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
+  void _showInvoiceResultSheet(receipt) {
+    final remaining = ref.read(remainingCarbonProvider);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
+        decoration: const BoxDecoration(
+          color: AppTheme.cardDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(
+            top: BorderSide(color: AppTheme.accentCyan, width: 2),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 拖曳指示器
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // 成功圖示
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0D2A33), Color(0xFF0A2028)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.accentCyan.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.cloud_done_rounded,
+                color: AppTheme.accentCyan,
+                size: 32,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            const Text(
+              '☁️ 雲端發票匯入成功',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              '${receipt.storeName} · ${receipt.items.length} 個品項',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 品項列表
+            ...receipt.items.map<Widget>((item) => Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: item.estimatedCO2 > 5.0
+                    ? AppTheme.dangerRed.withValues(alpha: 0.06)
+                    : AppTheme.primaryGreen.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: item.estimatedCO2 > 5.0
+                      ? AppTheme.dangerRed.withValues(alpha: 0.2)
+                      : AppTheme.primaryGreen.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    item.estimatedCO2 > 5.0
+                        ? Icons.warning_amber_rounded
+                        : Icons.eco_outlined,
+                    color: item.estimatedCO2 > 5.0
+                        ? AppTheme.dangerRed
+                        : AppTheme.primaryGreen,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'NT\$ ${item.amount.toInt()}',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${item.estimatedCO2} kg',
+                    style: TextStyle(
+                      color: item.estimatedCO2 > 5.0
+                          ? AppTheme.dangerRed
+                          : AppTheme.primaryGreen,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+            )),
+
+            const SizedBox(height: 12),
+
+            // 碳預算剩餘提示
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: remaining < 10
+                    ? AppTheme.dangerRed.withValues(alpha: 0.08)
+                    : AppTheme.primaryGreen.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    remaining < 10
+                        ? Icons.warning_rounded
+                        : Icons.check_circle_outline,
+                    color: remaining < 10
+                        ? AppTheme.dangerRed
+                        : AppTheme.primaryGreen,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '碳預算剩餘 ${remaining.toStringAsFixed(1)} kg CO₂e',
+                    style: TextStyle(
+                      color: remaining < 10
+                          ? AppTheme.dangerRed
+                          : AppTheme.primaryGreen,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.accentCyan,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  '確認',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showResultBottomSheet(ReceiptParseResult result) {
@@ -209,6 +437,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   Widget build(BuildContext context) {
     final parseState = ref.watch(receiptParseProvider);
     final isLoading = parseState is AsyncLoading;
+    final importState = ref.watch(invoiceImportProvider);
+    final isImporting = importState.status == InvoiceImportStatus.loading;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -265,7 +495,42 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+
+            // ── 雲端發票匯入按鈕 ──
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: isImporting ? null : _onImportInvoice,
+                icon: isImporting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.accentCyan,
+                        ),
+                      )
+                    : const Icon(Icons.cloud_download_rounded),
+                label: Text(isImporting ? '匯入中...' : '☁️ 匯入雲端發票'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.accentCyan,
+                  side: BorderSide(
+                    color: AppTheme.accentCyan.withValues(alpha: 0.4),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
 
             // ── 輸入區 ──
             Container(
