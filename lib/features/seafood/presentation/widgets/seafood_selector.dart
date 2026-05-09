@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../data/repositories/seafood_repository.dart';
-import '../../domain/models/seafood_item.dart';
+import '../../../../repositories/seafood_repository.dart';
+import '../../../../models/seafood_item.dart';
 
 class SeafoodSelector extends ConsumerWidget {
   const SeafoodSelector({super.key});

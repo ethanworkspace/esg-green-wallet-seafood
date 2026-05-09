@@ -1,15 +1,18 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../data/providers/dashboard_providers.dart';
 
-class CarbonBudgetCard extends StatelessWidget {
+class CarbonBudgetCard extends ConsumerWidget {
   const CarbonBudgetCard({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const double budget = 100.0;
-    const double used = 50.0;
-    const double remaining = budget - used;
-    const double progress = used / budget;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final used = ref.watch(usedCarbonProvider);
+    final remaining = ref.watch(remainingCarbonProvider);
+    final percentage = (used / initialBudget * 100).clamp(0.0, 100.0);
+    final isOverBudget = used >= initialBudget;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -22,18 +25,16 @@ class CarbonBudgetCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: AppTheme.primaryGreen.withValues(alpha: 0.3),
-          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+            color: AppTheme.primaryGreen.withValues(alpha: 0.12),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── 標題列 ──
           Row(
@@ -44,11 +45,7 @@ class CarbonBudgetCard extends StatelessWidget {
                   color: AppTheme.primaryGreen.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.eco,
-                  color: AppTheme.primaryGreen,
-                  size: 20,
-                ),
+                child: const Icon(Icons.eco, color: AppTheme.primaryGreen, size: 20),
               ),
               const SizedBox(width: 10),
               Text(
@@ -77,76 +74,145 @@ class CarbonBudgetCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 24),
-
-          // ── 剩餘數字 ──
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${remaining.toInt()}',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: AppTheme.primaryGreen,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                    ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  'kg CO₂e 剩餘',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white54,
-                      ),
-                ),
-              ),
-            ],
-          ),
-
           const SizedBox(height: 20),
 
-          // ── 進度條 ──
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+          // ── 圓環圖 + 中心數字 ──
+          SizedBox(
+            height: 180,
             child: Stack(
+              alignment: Alignment.center,
               children: [
-                Container(
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                PieChart(
+                  PieChartData(
+                    startDegreeOffset: -90,
+                    sectionsSpace: 3,
+                    centerSpaceRadius: 60,
+                    sections: [
+                      // 已使用
+                      PieChartSectionData(
+                        value: used.clamp(0.01, initialBudget),
+                        color: isOverBudget
+                            ? AppTheme.dangerRed
+                            : const Color(0xFFFF7043),
+                        radius: 22,
+                        showTitle: false,
+                      ),
+                      // 剩餘
+                      PieChartSectionData(
+                        value: remaining.clamp(0.01, initialBudget),
+                        color: AppTheme.primaryGreen,
+                        radius: 22,
+                        showTitle: false,
+                      ),
+                    ],
                   ),
                 ),
-                FractionallySizedBox(
-                  widthFactor: progress,
-                  child: Container(
-                    height: 10,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.greenGradient,
-                      borderRadius: BorderRadius.circular(8),
+                // 中心數字
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      remaining.toStringAsFixed(1),
+                      style: TextStyle(
+                        color: isOverBudget
+                            ? AppTheme.dangerRed
+                            : AppTheme.primaryGreen,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'kg CO₂e',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '剩餘額度',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.35),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // ── 底部統計 ──
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '已使用 ${used.toInt()} kg',
-                style: const TextStyle(color: Colors.white38, fontSize: 13),
-              ),
-              Text(
-                '總預算 ${budget.toInt()} kg',
-                style: const TextStyle(color: Colors.white38, fontSize: 13),
-              ),
-            ],
+          // ── 底部統計列 ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                _buildStat(
+                  label: '已使用',
+                  value: '${used.toStringAsFixed(1)} kg',
+                  color: const Color(0xFFFF7043),
+                ),
+                Container(
+                  width: 1,
+                  height: 28,
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
+                _buildStat(
+                  label: '總預算',
+                  value: '${initialBudget.toInt()} kg',
+                  color: Colors.white54,
+                ),
+                Container(
+                  width: 1,
+                  height: 28,
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
+                _buildStat(
+                  label: '使用率',
+                  value: '${percentage.toStringAsFixed(0)}%',
+                  color: percentage > 80
+                      ? AppTheme.dangerRed
+                      : AppTheme.primaryGreen,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStat({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.35),
+              fontSize: 11,
+            ),
           ),
         ],
       ),

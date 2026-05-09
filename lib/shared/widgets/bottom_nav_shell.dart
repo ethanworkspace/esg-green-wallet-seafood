@@ -10,6 +10,7 @@ class BottomNavShell extends StatelessWidget {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/scan')) return 1;
     if (location.startsWith('/seafood')) return 2;
+    if (location.startsWith('/reward')) return 3;
     return 0;
   }
 
@@ -29,6 +30,8 @@ class BottomNavShell extends StatelessWidget {
               context.go('/scan');
             case 2:
               context.go('/seafood');
+            case 3:
+              context.go('/reward');
           }
         },
         destinations: const [
@@ -46,6 +49,11 @@ class BottomNavShell extends StatelessWidget {
             icon: Icon(Icons.set_meal_outlined),
             selectedIcon: Icon(Icons.set_meal),
             label: '海鮮比較',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.card_giftcard_outlined),
+            selectedIcon: Icon(Icons.card_giftcard),
+            label: '兌換',
           ),
         ],
       ),

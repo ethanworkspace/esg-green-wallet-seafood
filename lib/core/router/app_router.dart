@@ -4,6 +4,7 @@ import '../../shared/widgets/bottom_nav_shell.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/scan/presentation/screens/scan_screen.dart';
 import '../../features/seafood/presentation/screens/seafood_screen.dart';
+import '../../features/reward/presentation/screens/reward_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -32,6 +33,12 @@ final GoRouter appRouter = GoRouter(
           path: '/seafood',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: SeafoodScreen(),
+          ),
+        ),
+        GoRoute(
+          path: '/reward',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: RewardScreen(),
           ),
         ),
       ],

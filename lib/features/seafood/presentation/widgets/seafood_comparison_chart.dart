@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../domain/models/seafood_item.dart';
+import '../../../../models/seafood_item.dart';
 
 class SeafoodComparisonChart extends StatefulWidget {
   final SeafoodItem itemA;
